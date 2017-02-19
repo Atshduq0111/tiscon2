@@ -6,11 +6,14 @@ import javax.transaction.Transactional;
 import enkan.component.doma2.DomaProvider;
 import enkan.data.Flash;
 import enkan.data.HttpResponse;
+import enkan.data.Session;
 import kotowari.component.TemplateEngine;
+import net.unit8.sigcolle.auth.LoginUserPrincipal;
 import net.unit8.sigcolle.dao.CampaignDao;
 import net.unit8.sigcolle.dao.SignatureDao;
 import net.unit8.sigcolle.form.CampaignForm;
 import net.unit8.sigcolle.form.SignatureForm;
+import net.unit8.sigcolle.model.Campaign;
 import net.unit8.sigcolle.model.UserCampaign;
 import net.unit8.sigcolle.model.Signature;
 
@@ -31,7 +34,7 @@ public class CampaignController {
 
     private HttpResponse showCampaign(Long campaignId, SignatureForm signature, String message) {
         CampaignDao campaignDao = domaProvider.getDao(CampaignDao.class);
-        UserCampaign campaign = campaignDao.selectById(campaignId);
+        UserCampaign campaign = campaignDao.selectById(campaignId);//
 
         SignatureDao signatureDao = domaProvider.getDao(SignatureDao.class);
         int signatureCount = signatureDao.countByCampaignId(campaignId);
@@ -42,7 +45,32 @@ public class CampaignController {
                 "signature", signature,
                 "message", message
         );
+
+
     }
+
+    public HttpResponse campaign(CampaignForm form, Session session) {
+        LoginUserPrincipal s =(LoginUserPrincipal) session.get("principal");
+        CampaignDao campaignDao = domaProvider.getDao(CampaignDao.class);
+
+        Campaign campaign = builder(new Campaign())
+                .set(Campaign::setTitle, form.getTitle())
+                .set(Campaign::setStatement, form.getStatement())
+                .set(Campaign::setGoal,form.getGoal())
+                .set(Campaign::setCreateUserId,(s.getUserId()))
+                .build();
+
+        campaignDao.insert(campaign);
+
+
+
+
+        return builder(redirect("/", SEE_OTHER))
+                .build();
+       // return templateEngine.render("index", "campaign", campaignDao.selectAll());
+    }
+
+
 
     /**
      * キャンペーン詳細画面表示.
@@ -90,7 +118,7 @@ public class CampaignController {
      * @return HttpResponse
      */
     public HttpResponse createForm() {
-        return templateEngine.render("signature/new");
+        return templateEngine.render("signature/new", "campaign", new CampaignForm());
     }
 
     /**
@@ -99,6 +127,10 @@ public class CampaignController {
      */
     public HttpResponse create() {
         // TODO: create campaign
-        return builder(redirect("/", SEE_OTHER)).build();
+        return builder(redirect("/", SEE_OTHER))
+                .set(HttpResponse::setFlash, new Flash("キャンペーンの登録が出来ました！"))
+                .build();
     }
+
+
 }
